@@ -1,22 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    >
+
     <title>Agar.io Clone</title>
+
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
 
     <div id="game">
+
         <canvas id="canvas"></canvas>
 
-        <div id="score">Score: 0</div>
-        <div id="players">Players: 1</div>
+        <div id="score">
+            Score: 0
+        </div>
+
+        <div id="players">
+            Players: 0
+        </div>
+
     </div>
 
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.8.1/socket.io.min.js"></script>
+
+    <!-- Game JavaScript -->
     <script src="script.js"></script>
 
 </body>
+
 </html>

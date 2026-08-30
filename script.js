@@ -1,20 +1,16 @@
+const socket = io("https://agario-clone-v56x.onrender.com");
+
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-let player = {
-    x: 0,
-    y: 0,
-    radius: 30,
-    color: "#22c55e"
-};
-
+let myId = null;
+let players = {};
 let foods = [];
 
-const WORLD_SIZE = 3000;
-
-// -------------------------
-// Canvas
-// -------------------------
+let camera = {
+    x: 0,
+    y: 0
+};
 
 function resizeCanvas() {
     canvas.width = window.innerWidth;
@@ -24,149 +20,311 @@ function resizeCanvas() {
 window.addEventListener("resize", resizeCanvas);
 resizeCanvas();
 
-// -------------------------
-// Food
-// -------------------------
 
-function createFood() {
-    return {
-        x: Math.random() * WORLD_SIZE - WORLD_SIZE / 2,
-        y: Math.random() * WORLD_SIZE - WORLD_SIZE / 2,
-        radius: 5,
-        color: `hsl(${Math.random() * 360}, 80%, 60%)`
-    };
-}
+// =============================
+// CONNECT TO SERVER
+// =============================
 
-for (let i = 0; i < 150; i++) {
-    foods.push(createFood());
-}
+socket.on("connect", () => {
+    console.log("Connected to multiplayer server");
+});
 
-// -------------------------
-// Movement
-// -------------------------
+socket.on("init", (data) => {
 
-let targetX = player.x;
-let targetY = player.y;
+    myId = data.id;
 
-function movePlayer(screenX, screenY) {
+    players = data.players;
+    foods = data.foods;
 
-    targetX =
-        player.x +
+    console.log("Game started!");
+});
+
+socket.on("playerJoined", (player) => {
+
+    players[player.id] = player;
+
+});
+
+socket.on("playerLeft", (id) => {
+
+    delete players[id];
+
+});
+
+socket.on("gameState", (data) => {
+
+    players = data.players;
+    foods = data.foods;
+
+    updateUI();
+});
+
+
+// =============================
+// PLAYER MOVEMENT
+// =============================
+
+function sendMovement(screenX, screenY) {
+
+    const me = players[myId];
+
+    if (!me) return;
+
+    const worldX =
+        me.x +
         (screenX - canvas.width / 2);
 
-    targetY =
-        player.y +
+    const worldY =
+        me.y +
         (screenY - canvas.height / 2);
+
+    socket.emit("move", {
+        x: worldX,
+        y: worldY
+    });
 }
 
-canvas.addEventListener("pointerdown", function (event) {
-    movePlayer(event.clientX, event.clientY);
+
+// Tablet touch
+canvas.addEventListener("pointerdown", (event) => {
+
+    sendMovement(
+        event.clientX,
+        event.clientY
+    );
+
 });
 
-canvas.addEventListener("pointermove", function (event) {
+canvas.addEventListener("pointermove", (event) => {
+
     if (event.pointerType === "mouse") {
-        movePlayer(event.clientX, event.clientY);
+
+        sendMovement(
+            event.clientX,
+            event.clientY
+        );
+
     }
+
 });
 
-// -------------------------
-// Update
-// -------------------------
 
-function update() {
+// =============================
+// UI
+// =============================
 
-    const dx = targetX - player.x;
-    const dy = targetY - player.y;
+function updateUI() {
 
-    const distance = Math.sqrt(dx * dx + dy * dy);
+    const me = players[myId];
 
-    if (distance > 2) {
+    if (me) {
 
-        const speed = Math.max(
-            2,
-            5 - player.radius * 0.02
-        );
+        document.getElementById("score").textContent =
+            "Score: " + Math.floor(me.radius * 2);
 
-        player.x += (dx / distance) * speed;
-        player.y += (dy / distance) * speed;
     }
 
-    // Eat food
-    for (let i = foods.length - 1; i >= 0; i--) {
-
-        const food = foods[i];
-
-        const dx = player.x - food.x;
-        const dy = player.y - food.y;
-
-        const distance = Math.sqrt(
-            dx * dx + dy * dy
-        );
-
-        if (distance < player.radius + food.radius) {
-
-            player.radius += 0.5;
-
-            foods.splice(i, 1);
-            foods.push(createFood());
-        }
-    }
-
-    document.getElementById("score").textContent =
-        "Score: " + Math.floor(player.radius * 2);
+    document.getElementById("players").textContent =
+        "Players: " + Object.keys(players).length;
 }
 
-// -------------------------
-// Grid
-// -------------------------
+
+// =============================
+// DRAW GRID
+// =============================
 
 function drawGrid() {
 
+    const me = players[myId];
+
+    if (!me) return;
+
+    camera.x = me.x;
+    camera.y = me.y;
+
     const gridSize = 50;
 
-    ctx.strokeStyle = "rgba(255,255,255,0.05)";
+    ctx.strokeStyle =
+        "rgba(255,255,255,0.05)";
+
     ctx.lineWidth = 1;
 
     const offsetX =
         canvas.width / 2 -
-        player.x;
+        camera.x;
 
     const offsetY =
         canvas.height / 2 -
-        player.y;
+        camera.y;
 
     for (
-        let x = -WORLD_SIZE;
-        x <= WORLD_SIZE;
+        let x = -3000;
+        x <= 3000;
         x += gridSize
     ) {
 
-        const screenX = x + offsetX;
+        const screenX =
+            x + offsetX;
 
         ctx.beginPath();
-        ctx.moveTo(screenX, 0);
-        ctx.lineTo(screenX, canvas.height);
+
+        ctx.moveTo(
+            screenX,
+            0
+        );
+
+        ctx.lineTo(
+            screenX,
+            canvas.height
+        );
+
         ctx.stroke();
     }
 
     for (
-        let y = -WORLD_SIZE;
-        y <= WORLD_SIZE;
+        let y = -3000;
+        y <= 3000;
         y += gridSize
     ) {
 
-        const screenY = y + offsetY;
+        const screenY =
+            y + offsetY;
 
         ctx.beginPath();
-        ctx.moveTo(0, screenY);
-        ctx.lineTo(canvas.width, screenY);
+
+        ctx.moveTo(
+            0,
+            screenY
+        );
+
+        ctx.lineTo(
+            canvas.width,
+            screenY
+        );
+
         ctx.stroke();
     }
 }
 
-// -------------------------
-// Draw
-// -------------------------
+
+// =============================
+// DRAW FOOD
+// =============================
+
+function drawFood() {
+
+    for (const food of foods) {
+
+        const x =
+            canvas.width / 2 +
+            food.x -
+            camera.x;
+
+        const y =
+            canvas.height / 2 +
+            food.y -
+            camera.y;
+
+        if (
+            x < -20 ||
+            x > canvas.width + 20 ||
+            y < -20 ||
+            y > canvas.height + 20
+        ) {
+            continue;
+        }
+
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            food.radius,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle = food.color;
+
+        ctx.fill();
+    }
+}
+
+
+// =============================
+// DRAW PLAYERS
+// =============================
+
+function drawPlayers() {
+
+    for (const id in players) {
+
+        const player = players[id];
+
+        const x =
+            canvas.width / 2 +
+            player.x -
+            camera.x;
+
+        const y =
+            canvas.height / 2 +
+            player.y -
+            camera.y;
+
+        if (
+            x < -player.radius ||
+            x > canvas.width + player.radius ||
+            y < -player.radius ||
+            y > canvas.height + player.radius
+        ) {
+            continue;
+        }
+
+        // Circle
+        ctx.beginPath();
+
+        ctx.arc(
+            x,
+            y,
+            player.radius,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fillStyle = player.color;
+
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle =
+            "rgba(255,255,255,0.5)";
+
+        ctx.lineWidth = 3;
+
+        ctx.stroke();
+
+        // Name
+        ctx.fillStyle = "white";
+
+        ctx.font =
+            "bold 16px Arial";
+
+        ctx.textAlign = "center";
+
+        ctx.textBaseline = "middle";
+
+        ctx.fillText(
+            id === myId ? "YOU" : player.name,
+            x,
+            y
+        );
+    }
+}
+
+
+// =============================
+// GAME DRAW LOOP
+// =============================
 
 function draw() {
 
@@ -177,85 +335,32 @@ function draw() {
         canvas.height
     );
 
-    drawGrid();
+    if (!players[myId]) {
 
-    // Draw food
-    for (const food of foods) {
+        ctx.fillStyle = "white";
 
-        const screenX =
-            canvas.width / 2 +
-            food.x -
-            player.x;
+        ctx.font = "20px Arial";
 
-        const screenY =
-            canvas.height / 2 +
-            food.y -
-            player.y;
+        ctx.textAlign = "center";
 
-        if (
-            screenX < -20 ||
-            screenX > canvas.width + 20 ||
-            screenY < -20 ||
-            screenY > canvas.height + 20
-        ) {
-            continue;
-        }
-
-        ctx.beginPath();
-
-        ctx.arc(
-            screenX,
-            screenY,
-            food.radius,
-            0,
-            Math.PI * 2
+        ctx.fillText(
+            "Connecting...",
+            canvas.width / 2,
+            canvas.height / 2
         );
 
-        ctx.fillStyle = food.color;
-        ctx.fill();
+        requestAnimationFrame(draw);
+
+        return;
     }
 
-    // Draw player
-    ctx.beginPath();
+    drawGrid();
 
-    ctx.arc(
-        canvas.width / 2,
-        canvas.height / 2,
-        player.radius,
-        0,
-        Math.PI * 2
-    );
+    drawFood();
 
-    ctx.fillStyle = player.color;
-    ctx.fill();
+    drawPlayers();
 
-    ctx.strokeStyle = "white";
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Player name
-    ctx.fillStyle = "white";
-    ctx.font = "bold 16px Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    ctx.fillText(
-        "You",
-        canvas.width / 2,
-        canvas.height / 2
-    );
+    requestAnimationFrame(draw);
 }
 
-// -------------------------
-// Game Loop
-// -------------------------
-
-function gameLoop() {
-
-    update();
-    draw();
-
-    requestAnimationFrame(gameLoop);
-}
-
-gameLoop();
+draw();

@@ -12,14 +12,21 @@ let foods = [];
 
 const WORLD_SIZE = 3000;
 
+// -------------------------
+// Canvas
+// -------------------------
+
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
 
 window.addEventListener("resize", resizeCanvas);
-
 resizeCanvas();
+
+// -------------------------
+// Food
+// -------------------------
 
 function createFood() {
     return {
@@ -34,48 +41,71 @@ for (let i = 0; i < 150; i++) {
     foods.push(createFood());
 }
 
-let targetX = 0;
-let targetY = 0;
+// -------------------------
+// Movement
+// -------------------------
 
-function setTarget(x, y) {
+let targetX = player.x;
+let targetY = player.y;
+
+function movePlayer(screenX, screenY) {
+
     targetX =
         player.x +
-        (x - canvas.width / 2);
+        (screenX - canvas.width / 2);
 
     targetY =
         player.y +
-        (y - canvas.height / 2);
+        (screenY - canvas.height / 2);
 }
 
-canvas.addEventListener("pointermove", (event) => {
-    setTarget(event.clientX, event.clientY);
+canvas.addEventListener("pointerdown", function (event) {
+    movePlayer(event.clientX, event.clientY);
 });
 
-canvas.addEventListener("pointerdown", (event) => {
-    setTarget(event.clientX, event.clientY);
+canvas.addEventListener("pointermove", function (event) {
+    if (event.pointerType === "mouse") {
+        movePlayer(event.clientX, event.clientY);
+    }
 });
+
+// -------------------------
+// Update
+// -------------------------
 
 function update() {
 
     const dx = targetX - player.x;
     const dy = targetY - player.y;
 
-    player.x += dx * 0.05;
-    player.y += dy * 0.05;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distance > 2) {
+
+        const speed = Math.max(
+            2,
+            5 - player.radius * 0.02
+        );
+
+        player.x += (dx / distance) * speed;
+        player.y += (dy / distance) * speed;
+    }
 
     // Eat food
     for (let i = foods.length - 1; i >= 0; i--) {
 
         const food = foods[i];
 
-        const distance = Math.hypot(
-            player.x - food.x,
-            player.y - food.y
+        const dx = player.x - food.x;
+        const dy = player.y - food.y;
+
+        const distance = Math.sqrt(
+            dx * dx + dy * dy
         );
 
         if (distance < player.radius + food.radius) {
 
-            player.radius += 0.3;
+            player.radius += 0.5;
 
             foods.splice(i, 1);
             foods.push(createFood());
@@ -85,6 +115,10 @@ function update() {
     document.getElementById("score").textContent =
         "Score: " + Math.floor(player.radius * 2);
 }
+
+// -------------------------
+// Grid
+// -------------------------
 
 function drawGrid() {
 
@@ -130,6 +164,10 @@ function drawGrid() {
     }
 }
 
+// -------------------------
+// Draw
+// -------------------------
+
 function draw() {
 
     ctx.clearRect(
@@ -141,7 +179,7 @@ function draw() {
 
     drawGrid();
 
-    // Food
+    // Draw food
     for (const food of foods) {
 
         const screenX =
@@ -177,7 +215,7 @@ function draw() {
         ctx.fill();
     }
 
-    // Player
+    // Draw player
     ctx.beginPath();
 
     ctx.arc(
@@ -207,6 +245,10 @@ function draw() {
         canvas.height / 2
     );
 }
+
+// -------------------------
+// Game Loop
+// -------------------------
 
 function gameLoop() {
 

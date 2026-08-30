@@ -1,0 +1,47 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #111827;
+    font-family: Arial, sans-serif;
+}
+
+#game {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
+#canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: #18233a;
+}
+
+#score,
+#players {
+    position: absolute;
+    top: 15px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.5);
+    color: white;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+#score {
+    left: 15px;
+}
+
+#players {
+    right: 15px;
+}
